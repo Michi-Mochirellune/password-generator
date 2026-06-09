@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Генератор паролей</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+[data-theme="light"] {
+  --bg: #f4f3ef;
+  --surface: #ffffff;
+  --surface2: #f0efeb;
+  --border: #e4e2db;
+  --text: #1a1a18;
+  --text2: #6b6960;
+  --text3: #9c9a92;
+  --accent: #2563eb;
+  --accent-soft: #eff4ff;
+  --accent-text: #1d4ed8;
+  --green: #16a34a;
+  --green-soft: #f0fdf4;
+  --amber: #d97706;
+  --amber-soft: #fffbeb;
+  --red: #dc2626;
+  --red-soft: #fef2f2;
+  --shadow: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+}
+
+[data-theme="dark"] {
+  --bg: #111110;
+  --surface: #1c1c1a;
+  --surface2: #252523;
+  --border: #2e2e2b;
+  --text: #f5f4f0;
+  --text2: #a8a69e;
+  --text3: #6b6960;
+  --accent: #3b82f6;
+  --accent-soft: #1e2d4a;
+  --accent-text: #93c5fd;
+  --green: #22c55e;
+  --green-soft: #0f2a1a;
+  --amber: #fbbf24;
+  --amber-soft: #2a1f08;
+  --red: #ef4444;
+  --red-soft: #2a1010;
+  --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 16px 48px;
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.25s, color 0.25s;
+}
+
+.wrap { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 12px; }
+
+.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.header-left h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.3px; }
+.header-left p { font-size: 13px; color: var(--text3); margin-top: 3px; }
+
+.theme-btn {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text2);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  box-shadow: var(--shadow);
+  transition: background 0.15s, transform 0.15s;
+  flex-shrink: 0;
+}
+.theme-btn:hover { background: var(--surface2); transform: scale(1.08); }
+
+.tabs { display: flex; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 4px; gap: 2px; box-shadow: var(--shadow); }
+.tab { flex: 1 0 auto; padding: 8px 4px; border-radius: 8px; border: none; background: transparent; color: var(--text3); font-size: 12px; font-weight: 500; cursor: pointer; transition: background 0.15s, color 0.15s; white-space: nowrap; }
+.tab.active { background: var(--accent); color: #fff; }
+.tab:not(.active):hover { background: var(--surface2); color: var(--text); }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+
+.password-display { padding: 20px; border-bottom: 1px solid var(--border); }
+.password-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text3); margin-bottom: 10px; }
+.password-row { display: flex; align-items: flex-start; gap: 10px; }
+.password-text { flex: 1; font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 17px; font-weight: 500; letter-spacing: 0.4px; color: var(--text); word-break: break-all; line-height: 1.5; min-height: 28px; }
+.btn-group { display: flex; gap: 6px; flex-shrink: 0; }
+.icon-btn { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; font-size: 15px; }
+.icon-btn:hover { background: var(--border); color: var(--text); }
+.icon-btn.copied { background: var(--green-soft); border-color: var(--green); color: var(--green); }
+
+.strength-area { padding: 12px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+.strength-track { flex: 1; height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+.strength-fill { height: 100%; border-radius: 2px; transition: width 0.35s, background 0.35s; width: 0%; }
+.strength-meta { display: flex; flex-direction: column; align-items: flex-end; min-width: 80px; }
+.strength-label { font-size: 12px; font-weight: 600; color: var(--text3); transition: color 0.3s; }
+.strength-entropy { font-size: 10px; color: var(--text3); margin-top: 1px; }
+
+.controls, .phrase-controls, .check-area, .bulk-area, .qr-area, .profile-area, .pronounce-area { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+.control-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.control-label { font-size: 14px; color: var(--text); user-select: none; }
+.control-label small { font-size: 12px; color: var(--text3); display: block; margin-top: 1px; }
+.length-right { display: flex; align-items: center; gap: 10px; }
+.length-value { font-size: 14px; font-weight: 600; color: var(--accent-text); min-width: 26px; text-align: center; font-variant-numeric: tabular-nums; }
+
+input[type="range"] { -webkit-appearance: none; width: 130px; height: 4px; background: var(--surface2); border-radius: 2px; outline: none; cursor: pointer; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.1s; }
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+.toggle { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-track { position: absolute; inset: 0; border-radius: 11px; background: var(--surface2); border: 1px solid var(--border); cursor: pointer; transition: background 0.2s; }
+.toggle-track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--text3); transition: transform 0.2s cubic-bezier(0.4,0,0.2,1); }
+.toggle input:checked + .toggle-track { background: var(--accent); border-color: var(--accent); }
+.toggle input:checked + .toggle-track::after { transform: translateX(16px); background: #fff; }
+
+.divider { height: 1px; background: var(--border); margin: 2px -20px; }
+
+.custom-chars-input, .check-input, select, .profile-name-input { padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); color: var(--text); font-size: 13px; outline: none; transition: border-color 0.15s; font-family: monospace; }
+.custom-chars-input:focus, .check-input:focus, select:focus, .profile-name-input:focus { border-color: var(--accent); }
+
+.sm-btn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-size: 13px; cursor: pointer; transition: background 0.15s; white-space: nowrap; }
+.sm-btn:hover { background: var(--border); }
+.sm-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.sm-btn.primary:hover { opacity: 0.88; }
+
+.generate-btn { width: 100%; padding: 13px; border-radius: 12px; border: none; background: var(--accent); color: #fff; font-size: 15px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: opacity 0.15s; box-shadow: var(--shadow); }
+.generate-btn:hover { opacity: 0.87; }
+
+.bulk-list { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-family: monospace; font-size: 13px; line-height: 1.8; max-height: 200px; overflow-y: auto; white-space: pre-wrap; }
+.history-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+.history-header { padding: 13px 18px; display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); }
+.history-list { padding: 6px 0; max-height: 190px; overflow-y: auto; }
+.history-item { padding: 8px 18px; display: flex; justify-content: space-between; gap: 12px; cursor: pointer; }
+.history-item:hover { background: var(--surface2); }
+.history-pass { font-family: monospace; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.badge { font-size: 11px; color: var(--text3); background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; }
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(12px); background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 20px; font-size: 13px; font-weight: 500; opacity: 0; pointer-events: none; transition: opacity 0.2s; white-space: nowrap; z-index: 100; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.panel { display: none; }
+.panel.active { display: block; }
+.spin { animation: spin 0.4s ease; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.qr-canvas { border-radius: 8px; border: 1px solid var(--border); background: #fff; padding: 10px; display: none; margin-top: 8px; }
+.hibp-result { font-size: 13px; margin-top: 6px; padding: 8px; border-radius: 8px; background: var(--surface2); }
+.crack-time { font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="header-left"><h1>Генератор паролей</h1><p>Локально, без серверов | Профили | HIBP | Произносимые</p></div>
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
+  </div>
+
+  <div class="tabs" id="mainTabs">
+    <button class="tab active" data-tab="password">Пароль</button>
+    <button class="tab" data-tab="phrase">Фраза</button>
+    <button class="tab" data-tab="pronounce">Слоговый</button>
+    <button class="tab" data-tab="check">Проверка</button>
+    <button class="tab" data-tab="bulk">Список</button>
+    <button class="tab" data-tab="profiles">Профили</button>
+    <button class="tab" data-tab="qr">QR</button>
+  </div>
+
+  <div class="panel active" id="panel-password">
+    <div class="card">
+      <div class="password-display"><div class="password-label">Ваш пароль</div>
+        <div class="password-row"><div class="password-text" id="passwordText">—</div>
+          <div class="btn-group"><button class="icon-btn" id="copyBtn" onclick="copyPassword()">📋</button><button class="icon-btn" onclick="generate()">🔄</button></div>
+        </div>
+      </div>
+      <div class="strength-area"><div class="strength-track"><div class="strength-fill" id="strengthFill"></div></div><div class="strength-meta"><div class="strength-label" id="strengthLabel">—</div><div class="strength-entropy" id="entropyLabel"></div></div></div>
+      <div class="controls">
+        <div class="control-row"><div class="control-label">Длина</div><div class="length-right"><span class="length-value" id="lengthValue">16</span><input type="range" id="lengthSlider" min="4" max="128" value="16" oninput="onLengthChange()"></div></div>
+        <div class="divider"></div>
+        <div class="control-row"><div class="control-label">Заглавные A-Z</div><label class="toggle"><input type="checkbox" id="uppercase" checked onchange="generate()"><span class="toggle-track"></span></label></div>
+        <div class="control-row"><div class="control-label">Строчные a-z</div><label class="toggle"><input type="checkbox" id="lowercase" checked onchange="generate()"><span class="toggle-track"></span></label></div>
+        <div class="control-row"><div class="control-label">Цифры 0-9</div><label class="toggle"><input type="checkbox" id="numbers" checked onchange="generate()"><span class="toggle-track"></span></label></div>
+        <div class="control-row"><div class="control-label">Символы !@#$%^&*</div><label class="toggle"><input type="checkbox" id="symbols" onchange="generate()"><span class="toggle-track"></span></label></div>
+        <div class="control-row"><div class="control-label">Исключить похожие (0Oo1lI)</div><label class="toggle"><input type="checkbox" id="noambig" onchange="generate()"><span class="toggle-track"></span></label></div>
+        <div class="control-row"><div class="control-label">Гарантировать все типы</div><label class="toggle"><input type="checkbox" id="guarantee" checked onchange="generate()"><span class="toggle-track"></span></label></div>
+        <div class="divider"></div>
+        <div class="control-row"><div class="control-label">Без повторов подряд</div><label class="toggle"><input type="checkbox" id="noRepeat" onchange="generate()"><span class="toggle-track"></span></label></div>
+        <div class="control-row"><div class="control-label">Минимум цифр</div><input type="number" id="minDigits" min="0" max="10" value="0" style="width:60px" onchange="generate()"></div>
+        <div class="control-row"><div class="control-label">Минимум символов</div><input type="number" id="minSymbols" min="0" max="10" value="0" style="width:60px" onchange="generate()"></div>
+        <div class="divider"></div>
+        <div class="control-row"><div class="control-label">Свои символы</div></div>
+        <div class="custom-chars-row"><input type="text" class="custom-chars-input" id="customChars" placeholder="например: €£¥" oninput="generate()"></div>
+      </div>
+    </div>
+    <button class="generate-btn" onclick="generate()">Сгенерировать пароль</button>
+  </div>
+
+  <div class="panel" id="panel-phrase">
+    <div class="card"><div class="password-display"><div class="password-label">Парольная фраза</div><div class="password-row"><div class="password-text" id="phraseText">—</div><div class="btn-group"><button class="icon-btn" id="copyPhraseBtn" onclick="copyPhrase()">📋</button><button class="icon-btn" onclick="generatePhrase()">🔄</button></div></div></div>
+    <div class="strength-area"><div class="strength-track"><div class="strength-fill" id="phraseStrengthFill"></div></div><div class="strength-meta"><div class="strength-label" id="phraseStrengthLabel">—</div><div class="strength-entropy" id="phraseEntropyLabel"></div></div></div>
+    <div class="phrase-controls"><div class="control-row"><div class="control-label">Количество слов</div><div class="length-right"><span class="length-value" id="wordCountValue">4</span><input type="range" id="wordCountSlider" min="3" max="10" value="4" oninput="onWordCountChange()"></div></div>
+    <div class="control-row"><div class="control-label">Разделитель</div><select id="separator" onchange="generatePhrase()"><option value="-">Дефис</option><option value=".">Точка</option><option value="_">Подчёркивание</option><option value=" ">Пробел</option><option value="">Слитно</option></select></div>
+    <div class="control-row"><div class="control-label">Добавить цифру в конец</div><label class="toggle"><input type="checkbox" id="phraseNumber" onchange="generatePhrase()"><span class="toggle-track"></span></label></div>
+    <div class="control-row"><div class="control-label">Добавить символ в конец</div><label class="toggle"><input type="checkbox" id="phraseSymbol" onchange="generatePhrase()"><span class="toggle-track"></span></label></div>
+    <div class="control-row"><div class="control-label">Заглавная первая буква</div><label class="toggle"><input type="checkbox" id="phraseCapitalize" checked onchange="generatePhrase()"><span class="toggle-track"></span></label></div></div></div>
+    <button class="generate-btn" onclick="generatePhrase()">Сгенерировать фразу</button>
+  </div>
+
+  <div class="panel" id="panel-pronounce">
+    <div class="card"><div class="password-display"><div class="password-label">Произносимый пароль</div><div class="password-row"><div class="password-text" id="pronounceText">—</div><div class="btn-group"><button class="icon-btn" onclick="copyPronounce()">📋</button><button class="icon-btn" onclick="generatePronounce()">🔄</button></div></div></div>
+    <div class="strength-area"><div class="strength-track"><div class="strength-fill" id="pronStrengthFill"></div></div><div class="strength-meta"><div class="strength-label" id="pronStrengthLabel">—</div><div class="strength-entropy" id="pronEntropyLabel"></div></div></div>
+    <div class="pronounce-area"><div class="control-row"><div class="control-label">Длина (символов)</div><div class="length-right"><span class="length-value" id="pronLenValue">10</span><input type="range" id="pronLenSlider" min="6" max="30" value="10" oninput="pronLenChange()"></div></div>
+    <div class="control-row"><div class="control-label">Режим</div><select id="pronMode" onchange="generatePronounce()"><option value="cv">Согласная+гласная (cv)</option><option value="cvc">Согласная+гласная+согласная (cvc)</option><option value="vcv">Гласная+согласная+гласная</option></select></div>
+    <div class="control-row"><div class="control-label">Заглавная первая буква</div><label class="toggle"><input type="checkbox" id="pronCapitalize" onchange="generatePronounce()"><span class="toggle-track"></span></label></div>
+    <div class="control-row"><div class="control-label">Добавить цифру в конец</div><label class="toggle"><input type="checkbox" id="pronNumber" onchange="generatePronounce()"><span class="toggle-track"></span></label></div></div></div>
+    <button class="generate-btn" onclick="generatePronounce()">Сгенерировать произносимый</button>
+  </div>
+
+  <div class="panel" id="panel-check">
+    <div class="card"><div class="check-area"><div class="control-label">Проверка стойкости и утечек (HIBP)</div><div class="check-input-row"><input type="password" class="check-input" id="checkInput" placeholder="Введите пароль..." oninput="checkPassword()"><button class="sm-btn" onclick="toggleCheckVisibility()">👁</button><button class="sm-btn" onclick="checkHIBP()">Утечки</button></div>
+    <div class="strength-area" style="padding:0;"><div class="strength-track"><div class="strength-fill" id="checkStrengthFill"></div></div><div class="strength-meta"><div class="strength-label" id="checkStrengthLabel">—</div><div class="strength-entropy" id="checkEntropyLabel"></div></div></div>
+    <div class="check-result" id="checkResult"><div class="check-stat">Длина: <strong id="checkLen">—</strong></div><div class="check-stat">Набор: <strong id="checkCharset">—</strong></div><div class="check-stat">Энтропия: <strong id="checkEntropy">—</strong> бит</div><div class="check-stat">Время перебора: <span class="crack-time" id="crackTime">—</span></div><div id="hibpResult" class="hibp-result" style="display:none"></div></div></div></div>
+  </div>
+
+  <div class="panel" id="panel-bulk"><div class="card"><div class="bulk-area"><div class="control-row"><div class="control-label">Количество</div><div class="length-right"><span class="length-value" id="bulkCountValue">10</span><input type="range" id="bulkCountSlider" min="1" max="100" value="10" oninput="document.getElementById('bulkCountValue').textContent=this.value"></div></div><button class="sm-btn primary" onclick="generateBulk()">Генерация списка</button><div class="bulk-list" id="bulkList">Нажмите кнопку</div><div class="bulk-actions"><button class="sm-btn" onclick="copyBulk()">Копировать всё</button><button class="sm-btn" onclick="downloadBulk()">Скачать .txt</button></div></div></div></div>
+
+  <div class="panel" id="panel-profiles"><div class="card"><div class="profile-area"><div class="control-row"><div class="control-label">Сохранить текущие настройки как профиль</div><input type="text" id="profileName" class="profile-name-input" placeholder="Имя профиля" style="flex:1"><button class="sm-btn" onclick="saveProfile()">Сохранить</button></div><div class="control-row"><div class="control-label">Загрузить профиль</div><select id="profileSelect" style="flex:1" onchange="loadProfile(this.value)"><option value="">-- Выберите --</option></select><button class="sm-btn" onclick="deleteProfile()">Удалить</button></div><div class="divider"></div><div class="control-row"><div class="control-label">Экспорт/Импорт всех профилей</div></div><div class="control-row"><button class="sm-btn" onclick="exportProfiles()">Экспорт JSON</button><button class="sm-btn" onclick="importProfiles()">Импорт JSON</button><input type="file" id="importFile" accept=".json" style="display:none" onchange="importFileHandler(event)"></div></div></div></div>
+
+  <div class="panel" id="panel-qr"><div class="card"><div class="qr-area"><div class="control-label">QR-код текущего пароля/фразы</div><canvas class="qr-canvas" id="qrCanvas" width="200" height="200"></canvas><div id="qrPlaceholder" style="font-size:13px;color:var(--text3);">Сначала сгенерируйте пароль</div><button class="sm-btn" onclick="downloadQR()">Скачать QR</button></div></div></div>
+
+  <div class="history-card"><div class="history-header"><span class="history-title">История сессии</span><button class="clear-btn" onclick="clearHistory()">Очистить</button></div><div class="history-list" id="historyList"><div class="history-empty">Паролей пока нет</div></div></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const WORDS = ["solnce","luna","zvezda","nebo","voda","ogon","zemlya","les","more","gora","reka","veter","dozhd","sneg","tucha","utro","vecher","noch","den","vesna","leto","osen","zima","dom","sad","put","doroga","most","gorod","derevnya","pole","lug","bereg","ostrov","dolina","lesa","bor","step","tundra","tajga","ptica","ryba","tigr","lev","volk","lisa","zajac","medved","kon","sobaka","koshka","orel","zhuravl","lebed","sinica","lastochka","krolik","mysh","ezik","bobr","vydra","rys","zubr","byk","baran","koza","svin","kurica","utka","gus","pavlin","krot","belka","los","olen","kunica","norka","borsuk","jashhur","ljagushka","zmeja","cherepaha","krokodil","pingvin","delfin","kit","akula","osminog","krab","rak","ulitka","babochka","zhuk","pchela","muravej","strekoza","komar","pautina","cvetok","derevo","kust","trava","list","jabloko","grusha","sliva","malina","apelsin","banan","vinograd","arbuz","dynja","persik","abrikos","granit","mramor","pesok","glina","zoloto","serebro","med","zhelezo","stal","aluminij","kniga","pesnya","muzyka","slovo","skazka","legend","car","korol","voin","rycar","skala","vodopad","ozero","boloto","ruchey","most","ploschad","svet","tma"];
+const wordList = [...new Set(WORDS)];
+let currentPassword = '', currentPhrase = '', currentPronounce = '';
+let history = [];
+
+function secureRandom(max) { const arr = new Uint32Array(1); let limit = Math.floor(0xffffffff / max) * max; do { crypto.getRandomValues(arr); } while (arr[0] > limit); return arr[0] % max; }
+function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000); }
+function escHtml(s) { return s.replace(/[&<>]/g, function(m){ if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
+
+const AMBIGUOUS = /[0Oo1lI]/g;
+function getCharset() {
+  let c = '';
+  if (document.getElementById('uppercase').checked) c += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  if (document.getElementById('lowercase').checked) c += 'abcdefghijklmnopqrstuvwxyz';
+  if (document.getElementById('numbers').checked)   c += '0123456789';
+  if (document.getElementById('symbols').checked)   c += '!@#$%^&*()-_=+[]{}|;:,.<>?';
+  const custom = document.getElementById('customChars').value;
+  if (custom) c += custom;
+  if (document.getElementById('noambig').checked) c = c.replace(AMBIGUOUS, '');
+  return [...new Set(c)].join('');
+}
+
+function enforceConstraints(pwd, len, charset) {
+  const minDigits = parseInt(document.getElementById('minDigits').value) || 0;
+  const minSymbols = parseInt(document.getElementById('minSymbols').value) || 0;
+  const noRepeat = document.getElementById('noRepeat').checked;
+  let digits = (pwd.match(/[0-9]/g) || []).length;
+  let symbols = (pwd.match(/[^a-zA-Z0-9]/g) || []).length;
+  if (digits >= minDigits && symbols >= minSymbols && (!noRepeat || !/(.)\1/.test(pwd))) return pwd;
+  for (let attempt = 0; attempt < 30; attempt++) {
+    let newPwd = '';
+    if (minDigits + minSymbols > len) break;
+    let neededDigits = minDigits, neededSymbols = minSymbols;
+    let remaining = len;
+    while (remaining > 0) {
+      let char = charset[secureRandom(charset.length)];
+      if (neededDigits > 0 && /[0-9]/.test(char)) { newPwd += char; neededDigits--; remaining--; continue; }
+      if (neededSymbols > 0 && /[^a-zA-Z0-9]/.test(char)) { newPwd += char; neededSymbols--; remaining--; continue; }
+      if (remaining > neededDigits + neededSymbols) { newPwd += char; remaining--; }
+    }
+    if (noRepeat && /(.)\1/.test(newPwd)) continue;
+    if ((newPwd.match(/[0-9]/g)||[]).length >= minDigits && (newPwd.match(/[^a-zA-Z0-9]/g)||[]).length >= minSymbols) return newPwd;
+  }
+  return pwd;
+}
+
+function generateOne(len, charset) {
+  const guarantee = document.getElementById('guarantee').checked;
+  let sets = [];
+  if (document.getElementById('uppercase').checked) sets.push('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.replace(AMBIGUOUS,''));
+  if (document.getElementById('lowercase').checked) sets.push('abcdefghijklmnopqrstuvwxyz'.replace(AMBIGUOUS,''));
+  if (document.getElementById('numbers').checked)   sets.push('0123456789'.replace(AMBIGUOUS,''));
+  if (document.getElementById('symbols').checked)   sets.push('!@#$%^&*()-_=+[]{}|;:,.<>?');
+  let pwd = '';
+  if (guarantee && sets.length && len >= sets.length) {
+    let mandatory = sets.map(s => s[secureRandom(s.length)]);
+    for (let i=0; i<len - mandatory.length; i++) pwd += charset[secureRandom(charset.length)];
+    let combined = (pwd + mandatory.join('')).split('');
+    for (let i=combined.length-1; i>0; i--) { let j=secureRandom(i+1); [combined[i],combined[j]]=[combined[j],combined[i]]; }
+    pwd = combined.join('');
+  } else for (let i=0;i<len;i++) pwd += charset[secureRandom(charset.length)];
+  return enforceConstraints(pwd, len, charset);
+}
+
+function generate() {
+  const len = parseInt(document.getElementById('lengthSlider').value);
+  const charset = getCharset();
+  if (!charset) { showToast('Выберите хотя бы один тип символов'); return; }
+  currentPassword = generateOne(len, charset);
+  document.getElementById('passwordText').textContent = currentPassword;
+  updateStrength(currentPassword, charset.length, 'strengthFill', 'strengthLabel', 'entropyLabel');
+  addToHistory(currentPassword);
+}
+function onLengthChange() { document.getElementById('lengthValue').textContent = document.getElementById('lengthSlider').value; generate(); }
+
+function generatePhrase() {
+  let count = parseInt(document.getElementById('wordCountSlider').value);
+  let sep = document.getElementById('separator').value;
+  let capitalize = document.getElementById('phraseCapitalize').checked;
+  let addNum = document.getElementById('phraseNumber').checked;
+  let addSym = document.getElementById('phraseSymbol').checked;
+  let words = [];
+  for(let i=0;i<count;i++) words.push(wordList[secureRandom(wordList.length)]);
+  if(capitalize) words = words.map(w => w.charAt(0).toUpperCase() + w.slice(1));
+  let phrase = words.join(sep);
+  if(addNum) phrase += secureRandom(10);
+  if(addSym) { let s='!@#$%^&*'; phrase += s[secureRandom(s.length)]; }
+  currentPhrase = phrase;
+  document.getElementById('phraseText').textContent = phrase;
+  updateStrength(phrase, wordList.length, 'phraseStrengthFill', 'phraseStrengthLabel', 'phraseEntropyLabel');
+  addToHistory(phrase);
+}
+function onWordCountChange() { document.getElementById('wordCountValue').textContent = document.getElementById('wordCountSlider').value; generatePhrase(); }
+
+const CONSONANTS = "bcdfghjklmnpqrstvwxz";
+const VOWELS = "aeiou";
+function generatePronounceable(len, mode, capitalize, addNumber) {
+  let result = "";
+  while(result.length < len) {
+    if(mode === "cv") result += CONSONANTS[secureRandom(CONSONANTS.length)] + VOWELS[secureRandom(VOWELS.length)];
+    else if(mode === "cvc") result += CONSONANTS[secureRandom(CONSONANTS.length)] + VOWELS[secureRandom(VOWELS.length)] + CONSONANTS[secureRandom(CONSONANTS.length)];
+    else result += VOWELS[secureRandom(VOWELS.length)] + CONSONANTS[secureRandom(CONSONANTS.length)] + VOWELS[secureRandom(VOWELS.length)];
+  }
+  result = result.substring(0,len);
+  if(capitalize) result = result.charAt(0).toUpperCase() + result.slice(1);
+  if(addNumber) result += secureRandom(10);
+  return result;
+}
+function generatePronounce() {
+  let len = parseInt(document.getElementById('pronLenSlider').value);
+  let mode = document.getElementById('pronMode').value;
+  let cap = document.getElementById('pronCapitalize').checked;
+  let num = document.getElementById('pronNumber').checked;
+  currentPronounce = generatePronounceable(len, mode, cap, num);
+  document.getElementById('pronounceText').textContent = currentPronounce;
+  updateStrength(currentPronounce, 26, 'pronStrengthFill', 'pronStrengthLabel', 'pronEntropyLabel');
+  addToHistory(currentPronounce);
+}
+function pronLenChange() { document.getElementById('pronLenValue').textContent = document.getElementById('pronLenSlider').value; generatePronounce(); }
+function copyPronounce() { if(currentPronounce) { navigator.clipboard.writeText(currentPronounce); showToast('Скопировано!'); } }
+
+function updateStrength(pwd, poolSize, fillId, labelId, entropyId) {
+  let entropy = pwd.length * Math.log2(Math.max(poolSize,2));
+  let score, text, color;
+  if(entropy<40){score=18;text='Слабый';color='#ef4444';}
+  else if(entropy<60){score=40;text='Средний';color='#f97316';}
+  else if(entropy<80){score=62;text='Хороший';color='#eab308';}
+  else if(entropy<100){score=82;text='Сильный';color='#22c55e';}
+  else{score=100;text='Отличный';color='#16a34a';}
+  let fill=document.getElementById(fillId); if(fill){fill.style.width=score+'%';fill.style.background=color;}
+  let lbl=document.getElementById(labelId); if(lbl){lbl.style.color=color;lbl.textContent=text;}
+  let ent=document.getElementById(entropyId); if(ent)ent.textContent=Math.round(entropy)+' бит';
+}
+
+function checkPassword() {
+  let val = document.getElementById('checkInput').value;
+  let resultDiv = document.getElementById('checkResult');
+  if(!val) { resultDiv.classList.remove('visible'); document.getElementById('checkStrengthLabel').textContent='—'; return; }
+  let pool=0, types=[];
+  if(/[a-z]/.test(val)){pool+=26;types.push('строчные');}
+  if(/[A-Z]/.test(val)){pool+=26;types.push('заглавные');}
+  if(/[0-9]/.test(val)){pool+=10;types.push('цифры');}
+  if(/[^a-zA-Z0-9]/.test(val)){pool+=32;types.push('символы');}
+  let entropy = val.length * Math.log2(Math.max(pool,2));
+  updateStrength(val, pool, 'checkStrengthFill', 'checkStrengthLabel', 'checkEntropyLabel');
+  document.getElementById('checkLen').textContent = val.length;
+  document.getElementById('checkCharset').textContent = types.join(', ')||'—';
+  document.getElementById('checkEntropy').textContent = Math.round(entropy);
+  let guessesPerSec=1e10, seconds=Math.pow(2,entropy)/guessesPerSec;
+  document.getElementById('crackTime').textContent = formatTime(seconds);
+  resultDiv.classList.add('visible');
+}
+function formatTime(sec){ if(sec<1) return 'мгновенно'; if(sec<60) return Math.round(sec)+' сек'; if(sec<3600) return Math.round(sec/60)+' мин'; if(sec<86400) return Math.round(sec/3600)+' ч'; if(sec<31536000) return Math.round(sec/86400)+' дн'; if(sec<3.15e13) return Math.round(sec/3.15e7)+' лет'; return 'вечность'; }
+function toggleCheckVisibility() { let i=document.getElementById('checkInput'); i.type = i.type==='password'?'text':'password'; }
+
+async function checkHIBP() {
+  let pwd = document.getElementById('checkInput').value;
+  if(!pwd) { showToast('Введите пароль'); return; }
+  let encoder = new TextEncoder();
+  let hashBuffer = await crypto.subtle.digest('SHA-1', encoder.encode(pwd));
+  let hashArray = Array.from(new Uint8Array(hashBuffer));
+  let hashHex = hashArray.map(b=>b.toString(16).padStart(2,'0')).join('').toUpperCase();
+  let prefix = hashHex.slice(0,5);
+  let suffix = hashHex.slice(5);
+  try {
+    let res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
+    let text = await res.text();
+    let lines = text.split(/\r?\n/);
+    let found = lines.find(line => line.split(':')[0] === suffix);
+    let count = found ? parseInt(found.split(':')[1]) : 0;
+    let resultDiv = document.getElementById('hibpResult');
+    resultDiv.style.display = 'block';
+    if(count > 0) resultDiv.innerHTML = `Этот пароль найден в ${count} утечках! НЕ ИСПОЛЬЗУЙТЕ ЕГО.`;
+    else resultDiv.innerHTML = `Хорошо! Этот пароль не обнаружен в известных утечках.`;
+    resultDiv.style.color = count ? 'var(--red)' : 'var(--green)';
+  } catch(e) { showToast('Ошибка проверки HIBP'); }
+}
+
+function saveProfile() {
+  let name = document.getElementById('profileName').value.trim();
+  if(!name) return showToast('Введите имя профиля');
+  let settings = {
+    len: document.getElementById('lengthSlider').value,
+    uppercase: document.getElementById('uppercase').checked,
+    lowercase: document.getElementById('lowercase').checked,
+    numbers: document.getElementById('numbers').checked,
+    symbols: document.getElementById('symbols').checked,
+    noambig: document.getElementById('noambig').checked,
+    guarantee: document.getElementById('guarantee').checked,
+    noRepeat: document.getElementById('noRepeat').checked,
+    minDigits: document.getElementById('minDigits').value,
+    minSymbols: document.getElementById('minSymbols').value,
+    customChars: document.getElementById('customChars').value
+  };
+  let profiles = JSON.parse(localStorage.getItem('pg_profiles') || '{}');
+  profiles[name] = settings;
+  localStorage.setItem('pg_profiles', JSON.stringify(profiles));
+  refreshProfileSelect();
+  showToast('Профиль сохранён');
+}
+function refreshProfileSelect() {
+  let profiles = JSON.parse(localStorage.getItem('pg_profiles') || '{}');
+  let sel = document.getElementById('profileSelect');
+  sel.innerHTML = '<option value="">-- Выберите --</option>';
+  for(let name of Object.keys(profiles)) sel.innerHTML += `<option value="${escHtml(name)}">${escHtml(name)}</option>`;
+}
+function loadProfile(name) {
+  if(!name) return;
+  let profiles = JSON.parse(localStorage.getItem('pg_profiles') || '{}');
+  let s = profiles[name];
+  if(!s) return;
+  document.getElementById('lengthSlider').value = s.len;
+  document.getElementById('uppercase').checked = s.uppercase;
+  document.getElementById('lowercase').checked = s.lowercase;
+  document.getElementById('numbers').checked = s.numbers;
+  document.getElementById('symbols').checked = s.symbols;
+  document.getElementById('noambig').checked = s.noambig;
+  document.getElementById('guarantee').checked = s.guarantee;
+  document.getElementById('noRepeat').checked = s.noRepeat;
+  document.getElementById('minDigits').value = s.minDigits;
+  document.getElementById('minSymbols').value = s.minSymbols;
+  document.getElementById('customChars').value = s.customChars || '';
+  onLengthChange();
+  generate();
+  showToast(`Профиль "${name}" загружен`);
+}
+function deleteProfile() {
+  let name = document.getElementById('profileSelect').value;
+  if(!name) return;
+  let profiles = JSON.parse(localStorage.getItem('pg_profiles') || '{}');
+  delete profiles[name];
+  localStorage.setItem('pg_profiles', JSON.stringify(profiles));
+  refreshProfileSelect();
+  showToast('Профиль удалён');
+}
+function exportProfiles() {
+  let data = localStorage.getItem('pg_profiles');
+  if(!data) { showToast('Нет сохранённых профилей'); return; }
+  let blob = new Blob([data], {type:'application/json'});
+  let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'password_profiles.json'; a.click(); URL.revokeObjectURL(a.href);
+}
+function importProfiles() { document.getElementById('importFile').click(); }
+function importFileHandler(e) {
+  let file = e.target.files[0];
+  if(!file) return;
+  let reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      let obj = JSON.parse(ev.target.result);
+      if(typeof obj === 'object') { localStorage.setItem('pg_profiles', JSON.stringify(obj)); refreshProfileSelect(); showToast('Профили импортированы'); }
+      else throw new Error();
+    } catch(e) { showToast('Ошибка импорта'); }
+  };
+  reader.readAsText(file);
+}
+
+function generateBulk() {
+  let count = parseInt(document.getElementById('bulkCountSlider').value);
+  let charset = getCharset();
+  if(!charset) { showToast('Настройте символы'); return; }
+  let len = parseInt(document.getElementById('lengthSlider').value);
+  let list = [];
+  for(let i=0;i<count;i++) list.push(generateOne(len, charset));
+  document.getElementById('bulkList').textContent = list.join('\n');
+}
+function copyBulk() { let t=document.getElementById('bulkList').textContent; if(t && t!='Нажмите кнопку') navigator.clipboard.writeText(t).then(()=>showToast('Скопировано!')); }
+function downloadBulk() { let t=document.getElementById('bulkList').textContent; if(t && t!='Нажмите кнопку'){ let a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([t],{type:'text/plain'})); a.download='passwords.txt'; a.click(); URL.revokeObjectURL(a.href); showToast('Скачано'); } }
+
+function addToHistory(pwd) { history.unshift({password:pwd, len:pwd.length, time:new Date().toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'})}); if(history.length>15) history.pop(); renderHistory(); }
+function renderHistory() { let listDiv=document.getElementById('historyList'); if(!history.length){ listDiv.innerHTML='<div class="history-empty">Паролей пока нет</div>'; return; } listDiv.innerHTML=history.map((item,i)=>`<div class="history-item" onclick="useHistoryItem(${i})"><span class="history-pass">${escHtml(item.password)}</span><div class="history-badges"><span class="badge">${item.len}</span><span class="badge">${item.time}</span></div></div>`).join(''); }
+function useHistoryItem(i){ currentPassword=history[i].password; document.getElementById('passwordText').textContent=currentPassword; updateStrength(currentPassword, getCharset().length||62, 'strengthFill','strengthLabel','entropyLabel'); showToast('Пароль восстановлен'); }
+function clearHistory(){ history=[]; renderHistory(); }
+
+function renderQR() {
+  let pass = currentPassword || currentPhrase || currentPronounce;
+  let canvas = document.getElementById('qrCanvas');
+  let placeholder = document.getElementById('qrPlaceholder');
+  if(!pass){ placeholder.style.display='block'; canvas.style.display='none'; return; }
+  placeholder.style.display='none'; canvas.style.display='block';
+  if(window.QRCode){ new QRCode(canvas, {text: pass, width:200, height:200}); }
+  else { let ctx=canvas.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,200,200); ctx.fillStyle='#000'; ctx.font='12px monospace'; ctx.fillText('Загрузка QR...',50,100); }
+}
+function downloadQR() { let canvas=document.getElementById('qrCanvas'); if(canvas.style.display==='none'){ showToast('Нет пароля для QR'); return;} let a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download='password-qr.png'; a.click(); showToast('QR сохранён'); }
+
+function copyPassword() { if(currentPassword) { navigator.clipboard.writeText(currentPassword); showToast('Скопировано!'); } }
+function copyPhrase() { if(currentPhrase) { navigator.clipboard.writeText(currentPhrase); showToast('Скопировано!'); } }
+
+function applyTheme(t) { document.documentElement.setAttribute('data-theme', t); document.getElementById('themeBtn').textContent = t==='dark'?'☀️':'🌙'; }
+function toggleTheme() { let newTheme = document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'; localStorage.setItem('pg_theme', newTheme); applyTheme(newTheme); }
+applyTheme(localStorage.getItem('pg_theme')||'light');
+function switchTab(name, el) { document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active')); el.classList.add('active'); document.getElementById(`panel-${name}`).classList.add('active'); if(name==='qr') renderQR(); }
+document.querySelectorAll('.tab').forEach(btn=>{ btn.addEventListener('click',()=>switchTab(btn.dataset.tab, btn)); });
+
+let qrScript = document.createElement('script'); qrScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'; qrScript.onload = () => { if(document.getElementById('panel-qr').classList.contains('active')) renderQR(); }; document.head.appendChild(qrScript);
+refreshProfileSelect();
+generate(); generatePhrase(); generatePronounce();
+</script>
+</body>
+</html>

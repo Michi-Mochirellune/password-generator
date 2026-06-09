@@ -1,3 +1,3 @@
-# password-generator
+# World of Passwords — генератор паролей
 
 Пока что описания нету :Р
